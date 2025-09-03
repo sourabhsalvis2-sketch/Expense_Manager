@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import ExpenseForm from "../components/ExpenseForm";
+import React, { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 const months = [
     "January", "February", "March", "April", "May", "June",
@@ -7,47 +7,81 @@ const months = [
 ];
 
 export default function Home() {
+    const currentMonth = months[new Date().getMonth()];
+    const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+    const [year, setYear] = useState(new Date().getFullYear());
+
     const [defaults, setDefaults] = useState<
-        { id: number; name: string; amount: number }[]
+        { id: number; description: string; amount: number }[]
     >([]);
     const [specifics, setSpecifics] = useState<
-        { id: number; name: string; amount: number; year: number; month: string }[]
+        { id: number; description: string; amount: number; year: number; month: string }[]
     >([]);
-    const [year, setYear] = useState(new Date().getFullYear());
-    const [month, setMonth] = useState(months[new Date().getMonth()]);
 
-    // Add Default
-    const addDefault = (name: string, amount: number) => {
-        const newItem = { id: Date.now(), name, amount };
-        setDefaults((prev) => [...prev, newItem]);
+    const [description, setDescription] = useState("");
+    const [amount, setAmount] = useState(0);
+    const [type, setType] = useState<"default" | "specific">("default");
+
+    // Fetch from Supabase
+    useEffect(() => {
+        const fetchExpenses = async () => {
+            const { data, error } = await supabase.from("expenses").select("*");
+            if (error) {
+                console.error("Error fetching:", error);
+                return;
+            }
+            if (data) {
+                setDefaults(data.filter((e) => e.type === "default"));
+                setSpecifics(data.filter((e) => e.type === "specific"));
+            }
+        };
+        fetchExpenses();
+    }, []);
+
+    // Add Expense
+    const addExpense = async () => {
+        if (!description || amount <= 0) return;
+
+        if (type === "default") {
+            const newItem = { id: Date.now(), description, amount };
+            setDefaults((prev) => [...prev, newItem]);
+
+            await supabase.from("expenses").insert([
+                { type: "default", description, amount, year }
+            ]);
+        } else {
+            const newItem = { id: Date.now(), description, amount, year, month: selectedMonth };
+            setSpecifics((prev) => [...prev, newItem]);
+
+            await supabase.from("expenses").insert([
+                { type: "specific", description, amount, year, month: selectedMonth }
+            ]);
+        }
+
+        setDescription("");
+        setAmount(0);
     };
 
-    // Add Specific
-    const addSpecific = (
-        name: string,
-        amount: number,
-        year: number,
-        month: string
-    ) => {
-        const newItem = { id: Date.now(), name, amount, year, month };
-        setSpecifics((prev) => [...prev, newItem]);
+    // Remove Expense
+    const removeExpense = async (id: number, type: string) => {
+        if (type === "Default") {
+            setDefaults((prev) => prev.filter((e) => e.id !== id));
+        } else {
+            setSpecifics((prev) => prev.filter((e) => e.id !== id));
+        }
+        await supabase.from("expenses").delete().eq("id", id);
     };
 
-    // Remove Default
-    const removeDefault = (id: number) => {
-        setDefaults((prev) => prev.filter((item) => item.id !== id));
-    };
-
-    // Remove Specific
-    const removeSpecific = (id: number) => {
-        setSpecifics((prev) => prev.filter((item) => item.id !== id));
-    };
-
-    // Expenses for the selected month
+    // Month Expenses (defaults always show, specifics only if month/year match)
     const monthExpenses = [
-        ...defaults.map((d) => ({ ...d, type: "Default", year, month })),
+        ...defaults.map((d) => ({
+            ...d,
+            type: "Default",
+            year,
+            month: selectedMonth,
+        })),
         ...specifics
-            .filter((s) => s.year === year && s.month === month)
+            .filter((s) => s.year === year && s.month === selectedMonth)
             .map((s) => ({ ...s, type: "Specific" })),
     ];
 
@@ -58,64 +92,93 @@ export default function Home() {
         specifics.reduce((sum, s) => sum + s.amount, 0);
 
     return (
-        <div className="min-h-screen bg-gray-100 p-6">
-            <h1 className="text-2xl font-bold mb-6">Monthly Expense Manager</h1>
+        <div className="min-h-screen bg-gray-100 flex justify-center p-6">
+            <div className="bg-white shadow-lg rounded-2xl p-6 w-full max-w-3xl">
+                <h1 className="text-2xl font-bold mb-4">Expense Tracker</h1>
 
-            <div className="grid gap-6 md:grid-cols-2">
-                {/* Add Expense Form */}
-                <div className="bg-white shadow-md rounded-2xl p-4">
-                    <ExpenseForm
-                        onAddDefault={addDefault}
-                        onAddSpecific={addSpecific}
-                        defaults={defaults}
-                        specifics={specifics}
-                        onRemoveDefault={removeDefault}
-                        onRemoveSpecific={removeSpecific}
+                {/* Selectors */}
+                <div className="flex gap-4 mb-4">
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="border rounded-lg p-2"
+                    >
+                        {months.map((m) => (
+                            <option key={m} value={m}>
+                                {m}
+                            </option>
+                        ))}
+                    </select>
+                    <input
+                        type="number"
+                        value={year}
+                        onChange={(e) => setYear(parseInt(e.target.value))}
+                        className="border rounded-lg p-2 w-24"
                     />
                 </div>
 
-                {/* Month / Year Selector + Totals */}
-                <div className="bg-white shadow-md rounded-2xl p-4">
-                    <div className="flex gap-4 mb-4">
-                        <select
-                            value={month}
-                            onChange={(e) => setMonth(e.target.value)}
-                            className="border rounded-lg p-2"
-                        >
-                            {months.map((m) => (
-                                <option key={m} value={m}>
-                                    {m}
-                                </option>
-                            ))}
-                        </select>
-
-                        <input
-                            type="number"
-                            value={year}
-                            onChange={(e) => setYear(parseInt(e.target.value))}
-                            className="border rounded-lg p-2 w-24"
-                        />
+                {/* Add Form */}
+                <div className="mb-6">
+                    <div className="flex gap-4 mb-2">
+                        <label>
+                            <input
+                                type="radio"
+                                value="default"
+                                checked={type === "default"}
+                                onChange={() => setType("default")}
+                            />{" "}
+                            Default
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                value="specific"
+                                checked={type === "specific"}
+                                onChange={() => setType("specific")}
+                            />{" "}
+                            Specific
+                        </label>
                     </div>
 
+                    <input
+                        type="text"
+                        placeholder="Description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="border rounded-lg p-2 w-full mb-2"
+                    />
+                    <input
+                        type="number"
+                        placeholder="Amount"
+                        value={amount}
+                        onChange={(e) => setAmount(parseInt(e.target.value))}
+                        className="border rounded-lg p-2 w-full mb-2"
+                    />
+
+                    <button
+                        onClick={addExpense}
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg"
+                    >
+                        Add Expense
+                    </button>
+                </div>
+
+                {/* Totals */}
+                <div className="mb-4">
                     <p className="font-semibold">
-                        Month Total ({month} {year}): ₹{monthTotal}
+                        Month Total ({selectedMonth} {year}): ₹{monthTotal}
                     </p>
-                    <p className="font-semibold mt-2">
+                    <p className="font-semibold">
                         Grand Total (All months): ₹{grandTotal}
                     </p>
                 </div>
-            </div>
 
-            {/* Expenses Table */}
-            <div className="bg-white shadow-md rounded-2xl p-4 mt-6">
-                <h2 className="text-lg font-bold mb-4">
-                    Expenses - {month} {year}
-                </h2>
+                {/* Table */}
                 <table className="w-full border">
                     <thead>
                         <tr className="bg-gray-200">
                             <th className="p-2 border">Type</th>
-                            <th className="p-2 border">Name</th>
+                            <th className="p-2 border">Description</th>
                             <th className="p-2 border">Amount</th>
                             <th className="p-2 border">Year</th>
                             <th className="p-2 border">Month</th>
@@ -126,17 +189,13 @@ export default function Home() {
                         {monthExpenses.map((exp) => (
                             <tr key={exp.id}>
                                 <td className="p-2 border">{exp.type}</td>
-                                <td className="p-2 border">{exp.name}</td>
+                                <td className="p-2 border">{exp.description}</td>
                                 <td className="p-2 border">₹{exp.amount}</td>
                                 <td className="p-2 border">{exp.year}</td>
                                 <td className="p-2 border">{exp.month}</td>
                                 <td className="p-2 border">
                                     <button
-                                        onClick={() =>
-                                            exp.type === "Default"
-                                                ? removeDefault(exp.id)
-                                                : removeSpecific(exp.id)
-                                        }
+                                        onClick={() => removeExpense(exp.id, exp.type)}
                                         className="bg-red-500 text-white px-3 py-1 rounded-lg"
                                     >
                                         Remove
