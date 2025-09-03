@@ -1,66 +1,87 @@
-import React from "react"
+import React from "react";
 
-interface Expense {
-    id: string
-    name: string
-    amount: number
-}
+type Expense = {
+    id: string;
+    name: string;
+    amount: number;
+};
 
-interface SpecificExpense extends Expense {
-    year: number
-    month: number
-}
+type Specific = Expense & {
+    year: number;
+    month: number;
+};
 
-interface MonthCardProps {
-    month: string
-    year: number
-    defaults: Expense[]
-    specifics: SpecificExpense[]
-    onRemoveSpecific: (id: string) => void
-}
+type MonthCardProps = {
+    month: string;
+    defaults: Expense[];
+    specifics: Specific[];
+    onRemoveDefault: (id: string) => void;
+    onRemoveSpecific: (id: string) => void;
+};
 
 const MonthCard: React.FC<MonthCardProps> = ({
     month,
-    year,
     defaults,
     specifics,
-    onRemoveSpecific
+    onRemoveDefault,
+    onRemoveSpecific,
 }) => {
-    const defaultsTotal = defaults.reduce((acc, d) => acc + Number(d.amount), 0)
-    const specificsTotal = specifics.reduce((acc, s) => acc + Number(s.amount), 0)
-    const monthlyTotal = defaultsTotal + specificsTotal
+    const defaultTotal = defaults.reduce((sum, d) => sum + Number(d.amount), 0);
+    const specificTotal = specifics.reduce((sum, s) => sum + Number(s.amount), 0);
+    const total = defaultTotal + specificTotal;
 
     return (
-        <div className="p-4 bg-white rounded-2xl shadow">
-            <h3 className="text-lg font-semibold text-indigo-600">
-                {month} {year}
-            </h3>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-lg font-semibold">{month}</h3>
+            <p className="text-slate-500">Total: ₹{total.toLocaleString()}</p>
 
-            <div className="mt-2 text-sm text-slate-600">
-                <p>Defaults: ₹{defaultsTotal.toLocaleString()}</p>
-                <p>Specific total: ₹{specificsTotal.toLocaleString()}</p>
-                <p className="mt-1 font-bold">
-                    Monthly total: ₹{monthlyTotal.toLocaleString()}
-                </p>
-            </div>
-
-            {specifics.length > 0 && (
-                <ul className="mt-3 space-y-1 text-sm">
-                    {specifics.map(s => (
-                        <li key={s.id} className="flex justify-between items-center">
-                            <span>{s.name} — ₹{Number(s.amount).toLocaleString()}</span>
+            {/* Defaults Section */}
+            <div className="mt-3">
+                <h4 className="text-sm text-slate-500">Defaults</h4>
+                <ul className="mt-1 space-y-1 text-sm">
+                    {defaults.map((d) => (
+                        <li
+                            key={d.id}
+                            className="flex justify-between items-center"
+                        >
+                            <span>
+                                {d.name} – ₹{Number(d.amount).toLocaleString()}
+                            </span>
                             <button
-                                onClick={() => onRemoveSpecific(s.id)}
-                                className="text-red-500 text-xs hover:underline"
+                                onClick={() => onRemoveDefault(d.id)}
+                                className="ml-2 text-red-500 hover:text-red-700"
                             >
                                 ✕
                             </button>
                         </li>
                     ))}
                 </ul>
-            )}
-        </div>
-    )
-}
+            </div>
 
-export default MonthCard
+            {/* Specifics Section */}
+            <div className="mt-3">
+                <h4 className="text-sm text-slate-500">Specifics</h4>
+                <ul className="mt-1 space-y-1 text-sm">
+                    {specifics.map((s) => (
+                        <li
+                            key={s.id}
+                            className="flex justify-between items-center"
+                        >
+                            <span>
+                                {s.name} – ₹{Number(s.amount).toLocaleString()}
+                            </span>
+                            <button
+                                onClick={() => onRemoveSpecific(s.id)}
+                                className="ml-2 text-red-500 hover:text-red-700"
+                            >
+                                ✕
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
+    );
+};
+
+export default MonthCard;

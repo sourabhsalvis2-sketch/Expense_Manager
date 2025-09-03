@@ -1,7 +1,14 @@
-// pages/_app.tsx
 import type { AppProps } from "next/app"
+import { Toaster } from "react-hot-toast"
 import "../styles/globals.css"
 
-export default function MyApp({ Component, pageProps }: AppProps) {
-    return <Component {...pageProps} />
+function MyApp({ Component, pageProps }: AppProps) {
+    return (
+        <>
+            <Component {...pageProps} />
+            <Toaster position="top-right" reverseOrder={false} />
+        </>
+    )
 }
+
+export default MyApp
