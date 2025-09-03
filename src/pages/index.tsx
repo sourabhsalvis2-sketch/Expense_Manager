@@ -99,15 +99,17 @@ export default function Home() {
                         Recurring defaults + month-specific expenses. Stored in Supabase.
                     </p>
                 </header>
-
-                <section className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="col-span-2">
+                <section className="mb-6 grid-cols-1 lg:grid-cols-3 gap-4 my-grid">
+                    {/* Left side (forms) */}
+                    <div className="lg:col-span-2 space-y-4">
                         <ExpenseForm
                             onAddDefault={addDefault}
                             onAddSpecific={addSpecific}
                             defaults={defaults}
                         />
                     </div>
+
+                    {/* Right side (totals) */}
                     <div className="p-4 rounded-2xl shadow bg-white">
                         <label className="block text-sm font-medium">Year</label>
                         <input
@@ -125,23 +127,20 @@ export default function Home() {
                         </div>
 
                         <div className="mt-4">
-                            <label className="block text-sm font-medium">Select Month</label>
-                            <select
-                                value={selectedMonth}
-                                onChange={e => setSelectedMonth(Number(e.target.value))}
-                                className="mt-2 border rounded p-2 w-full"
-                            >
-                                {months.map((m, idx) => (
-                                    <option key={idx + 1} value={idx + 1}>
-                                        {m}
-                                    </option>
+                            <h4 className="text-sm text-slate-500">Defaults</h4>
+                            <ul className="mt-2 space-y-1 text-sm">
+                                {defaults.map(d => (
+                                    <li key={d.id} className="flex justify-between">
+                                        <span>{d.name}</span>
+                                        <span>₹{Number(d.amount).toLocaleString()}</span>
+                                    </li>
                                 ))}
-                            </select>
+                            </ul>
                         </div>
                     </div>
                 </section>
 
-                <section className="grid grid-cols-1">
+                <section className="my-grid grid-cols-1">
                     <MonthCard
                         month={months[selectedMonth - 1]}
                         year={year}
@@ -152,6 +151,6 @@ export default function Home() {
                     />
                 </section>
             </div>
-        </div>
+        </div >
     )
 }
